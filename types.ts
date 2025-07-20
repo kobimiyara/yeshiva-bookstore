@@ -1,4 +1,3 @@
-import { ObjectId } from 'mongodb';
 
 export interface Book {
   id: number;
@@ -12,7 +11,7 @@ export interface CartItem extends Book {
 }
 
 export interface Order {
-  _id: ObjectId;
+  _id: string;
   studentName: string;
   cart: CartItem[];
   total: number;

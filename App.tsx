@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+
+import { useState, useMemo } from 'react';
 import { Welcome } from './components/Welcome';
 import { BookSelector } from './components/BookSelector';
 import { Payment } from './components/Payment';
@@ -20,19 +21,6 @@ enum AppState {
   AdminLogin,
   AdminView,
 }
-
-const handleServerError = async (response: Response): Promise<string> => {
-  const contentType = response.headers.get("content-type");
-  if (contentType && contentType.indexOf("application/json") !== -1) {
-    try {
-      const errorData = await response.json();
-      return errorData.message || 'התקבלה שגיאה לא מזוהה מהשרת.';
-    } catch (jsonError) {
-      return 'התקבלה תגובת שגיאה לא תקינה מהשרת.';
-    }
-  }
-  return `שגיאת שרת (${response.status}): ${response.statusText}`;
-};
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>(AppState.Welcome);
@@ -97,8 +85,8 @@ export default function App() {
       });
 
       if (!response.ok) {
-        const errorMessage = await handleServerError(response);
-        throw new Error(errorMessage);
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'התרחשה שגיאה בשליחת ההזמנה.');
       }
       
       setAppState(AppState.Confirmation);
@@ -122,9 +110,11 @@ export default function App() {
         body: JSON.stringify({ password }),
       });
 
+      if (response.status === 401) {
+        throw new Error('סיסמה שגויה.');
+      }
       if (!response.ok) {
-        const errorMessage = await handleServerError(response);
-        throw new Error(errorMessage);
+        throw new Error('שגיאה בגישה לנתונים.');
       }
 
       const fetchedOrders: Order[] = await response.json();

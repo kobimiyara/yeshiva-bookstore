@@ -59,7 +59,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ orders, onExport, onLogout
                     <tbody className="divide-y divide-gray-200">
                         {orders.length > 0 ? (
                             orders.map(order => (
-                                <tr key={order._id.toString()} className="hover:bg-gray-50">
+                                <tr key={order._id} className="hover:bg-gray-50">
                                     <td className="py-3 px-4 whitespace-nowrap">{formatDate(order.createdAt)}</td>
                                     <td className="py-3 px-4 font-medium text-gray-800">{order.studentName}</td>
                                     <td className="py-3 px-4 whitespace-nowrap">{order.total} ₪</td>
@@ -67,7 +67,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ orders, onExport, onLogout
                                     <td className="py-3 px-4">
                                         <a 
                                             href={order.receipt.data} 
-                                            download={`receipt-${order.studentName.replace(' ', '_')}-${order._id}`}
+                                            download={`קבלה-${order.studentName.replace(/\s+/g, '_')}-${order.receipt.name}`}
                                             target="_blank" 
                                             rel="noopener noreferrer"
                                             className="text-blue-600 hover:underline"
