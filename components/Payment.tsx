@@ -17,7 +17,6 @@ interface PaymentProps {
   submitError: string | null;
 }
 
-// קריאת פרטי הבנק ממשתני הסביבה
 const bankDetails = {
     accountName: import.meta.env.VITE_BANK_ACCOUNT_NAME || 'לא הוגדר',
     bankName: import.meta.env.VITE_BANK_NAME || 'לא הוגדר',
@@ -25,21 +24,67 @@ const bankDetails = {
     accountNumber: import.meta.env.VITE_BANK_ACCOUNT_NUMBER || 'לא הוגדר',
 };
 
+const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+
 export const Payment: React.FC<PaymentProps> = ({ studentName, cart, total, onConfirm, onBack, isSubmitting, submitError }) => {
   const [referenceNumber, setReferenceNumber] = useState('');
   const [receipt, setReceipt] = useState<File | null>(null);
-  const [fileName, setFileName] = useState('');
+  const [formErrors, setFormErrors] = useState<{ reference?: string; receipt?: string }>({});
+
+  const validateFile = (file: File | null): string | undefined => {
+    if (!file) {
+      return 'חובה להעלות קובץ.';
+    }
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      return 'סוג הקובץ אינו נתמך. יש להעלות תמונה או קובץ PDF.';
+    }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      return `הקובץ גדול מדי. הגודל המירבי הוא ${MAX_FILE_SIZE_MB}MB.`;
+    }
+    return undefined;
+  };
+  
+  const validateReference = (ref: string): string | undefined => {
+    if (ref.trim().length < 5) {
+      return 'מספר האסמכתא חייב להכיל לפחות 5 תווים.';
+    }
+    return undefined;
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setReceipt(file);
-      setFileName(file.name);
+    const file = e.target.files?.[0] || null;
+    const error = validateFile(file);
+    
+    if (error) {
+        setFormErrors(prev => ({ ...prev, receipt: error }));
+        setReceipt(null);
+        e.target.value = ''; // Reset file input
+    } else {
+        setFormErrors(prev => ({ ...prev, receipt: undefined }));
+        setReceipt(file);
     }
   };
 
+  const handleReferenceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setReferenceNumber(value);
+    const error = validateReference(value);
+    setFormErrors(prev => ({ ...prev, reference: error }));
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const refError = validateReference(referenceNumber);
+    const fileError = validateFile(receipt);
+
+    if (refError || fileError) {
+        setFormErrors({ reference: refError, receipt: fileError });
+        return;
+    }
+
     if (referenceNumber.trim() && receipt && !isSubmitting) {
       onConfirm({ referenceNumber, receipt });
     }
@@ -83,18 +128,20 @@ export const Payment: React.FC<PaymentProps> = ({ studentName, cart, total, onCo
                     type="text"
                     id="reference"
                     value={referenceNumber}
-                    onChange={(e) => setReferenceNumber(e.target.value)}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100"
-                    placeholder="העתיקו את מספר האסמכתא מהבנק"
+                    onChange={handleReferenceChange}
+                    className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm sm:text-sm disabled:bg-gray-100 ${formErrors.reference ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500'}`}
+                    placeholder="5 תווים לפחות"
                     required
+                    minLength={5}
                   />
+                  {formErrors.reference && <p className="mt-1 text-xs text-red-600">{formErrors.reference}</p>}
                 </div>
 
                 <div>
                   <label htmlFor="receipt-upload" className="block text-sm font-medium text-gray-700">
-                    העלאת אישור העברה
+                    העלאת אישור העברה (קובץ תמונה או PDF, עד 5MB)
                   </label>
-                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                  <div className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md ${formErrors.receipt ? 'border-red-400' : 'border-gray-300'}`}>
                       <div className="space-y-1 text-center">
                           <UploadIcon className="mx-auto h-12 w-12 text-gray-400" />
                           <div className="flex text-sm text-gray-600">
@@ -102,15 +149,16 @@ export const Payment: React.FC<PaymentProps> = ({ studentName, cart, total, onCo
                               htmlFor="file-upload"
                               className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
                           >
-                              <span>העלה קובץ</span>
-                              <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} accept="image/*,.pdf" required />
+                              <span>בחר קובץ</span>
+                              <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} accept={ALLOWED_FILE_TYPES.join(',')} required />
                           </label>
                           <p className="pr-1">או גרור ושחרר</p>
                           </div>
-                          <p className="text-xs text-gray-500">PNG, JPG, PDF</p>
+                          <p className="text-xs text-gray-500">PNG, JPG, PDF (עד 5MB)</p>
                       </div>
                   </div>
-                  {fileName && <p className="mt-2 text-sm text-green-600">קובץ שנבחר: {fileName}</p>}
+                  {receipt && !formErrors.receipt && <p className="mt-2 text-sm text-green-600">קובץ שנבחר: {receipt.name}</p>}
+                  {formErrors.receipt && <p className="mt-1 text-xs text-red-600">{formErrors.receipt}</p>}
                 </div>
               </fieldset>
               
@@ -123,7 +171,7 @@ export const Payment: React.FC<PaymentProps> = ({ studentName, cart, total, onCo
 
               <button
                 type="submit"
-                disabled={!referenceNumber.trim() || !receipt || isSubmitting}
+                disabled={!referenceNumber || !receipt || !!formErrors.reference || !!formErrors.receipt || isSubmitting}
                 className="w-full flex items-center justify-center gap-2 bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-300"
               >
                 {isSubmitting ? (
