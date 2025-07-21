@@ -1,5 +1,7 @@
 
 import { MongoClient, Db } from 'mongodb';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
 
 // Define the expected structure from the frontend
 interface RequestPayload {
@@ -27,9 +29,10 @@ async function connectToDatabase() {
   return db;
 }
 
-export default async function handler(req: Request) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ message: 'Method Not Allowed' }), { status: 405 });
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
   let step = 'initializing';
@@ -37,15 +40,15 @@ export default async function handler(req: Request) {
     const { NEDARIM_API_NAME, NEDARIM_API_PASSWORD } = process.env;
     if (!NEDARIM_API_NAME || !NEDARIM_API_PASSWORD) {
       console.error("Nedarim Plus API credentials are not set on the server.");
-      return new Response(JSON.stringify({ message: 'Payment provider is not configured.' }), { status: 500 });
+      return res.status(500).json({ message: 'Payment provider is not configured.' });
     }
 
     step = 'parsing-request-body';
-    const { studentName, cart, total }: RequestPayload = await req.json();
+    const { studentName, cart, total }: RequestPayload = req.body;
 
     step = 'validating-order-data';
     if (!studentName || !cart || cart.length === 0 || total <= 0) {
-      return new Response(JSON.stringify({ message: 'Invalid order data.' }), { status: 400 });
+      return res.status(400).json({ message: 'Invalid order data.' });
     }
 
     step = 'connecting-to-database';
@@ -67,7 +70,12 @@ export default async function handler(req: Request) {
     
     // 2. Prepare the request for Nedarim Plus API
     step = 'preparing-nedarim-payload';
-    const baseUrl = new URL(req.url).origin;
+    const protocol = req.headers['x-forwarded-proto'] || 'http';
+    const host = req.headers['host'];
+    if (!host) {
+      throw new Error("Could not determine the host from request headers.");
+    }
+    const baseUrl = `${protocol}://${host}`;
     
     const nedarimPayload = {
       ApiName: NEDARIM_API_NAME,
@@ -102,14 +110,11 @@ export default async function handler(req: Request) {
 
     // 4. Return the sale link to the frontend
     step = 'returning-sale-link';
-    return new Response(JSON.stringify({ saleLink: responseData.SaleLink }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return res.status(200).json({ saleLink: responseData.SaleLink });
 
   } catch (error) {
     console.error(`Error at step [${step}]:`, error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return new Response(JSON.stringify({ message: 'Internal Server Error', error: errorMessage }), { status: 500 });
+    return res.status(500).json({ message: 'Internal Server Error', error: errorMessage });
   }
 }

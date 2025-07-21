@@ -1,7 +1,7 @@
-
 // This serverless function handles the automated callback (webhook) from Nedarim Plus.
 // It verifies the transaction and updates the order status in the database.
 import { MongoClient, Db, ObjectId } from 'mongodb';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 interface NedarimWebhookPayload {
     SaleId: string; // This is OUR order ID
@@ -57,19 +57,20 @@ async function verifyTransaction(saleId: string): Promise<any> {
 }
 
 
-export default async function handler(req: Request) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 });
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).send('Method Not Allowed');
   }
 
   try {
-    const payload: NedarimWebhookPayload = await req.json();
+    const payload: NedarimWebhookPayload = req.body;
     const orderId = payload.SaleId;
 
     // SECURITY: Validate the received Order ID before processing.
     if (!orderId || !ObjectId.isValid(orderId)) {
         console.warn(`Webhook received with invalid or missing SaleId: ${orderId}`);
-        return new Response('Bad Request: Invalid or missing SaleId', { status: 400 });
+        return res.status(400).send('Bad Request: Invalid or missing SaleId');
     }
     
     // SECURITY: Verify the transaction details with Nedarim Plus directly
@@ -77,7 +78,7 @@ export default async function handler(req: Request) {
 
     if (verifiedData.SaleId !== orderId) {
         console.error(`Webhook validation failed: ID mismatch. Webhook: ${orderId}, API: ${verifiedData.SaleId}`);
-        return new Response('Unauthorized: ID mismatch', { status: 401 });
+        return res.status(401).send('Unauthorized: ID mismatch');
     }
 
     const db = await connectToDatabase();
@@ -113,12 +114,12 @@ export default async function handler(req: Request) {
     }
 
     // Respond to Nedarim Plus that we have received the webhook.
-    return new Response('OK', { status: 200 });
+    return res.status(200).send('OK');
 
   } catch (error) {
     console.error('Webhook handler error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown webhook error';
     // We should still return 200 to Nedarim Plus to prevent retries, while logging the error.
-    return new Response(`Error processing webhook: ${errorMessage}`, { status: 200 });
+    return res.status(200).send(`Error processing webhook: ${errorMessage}`);
   }
 }

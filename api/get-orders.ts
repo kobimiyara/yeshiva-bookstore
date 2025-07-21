@@ -2,6 +2,7 @@
 // It requires environment variables `MONGO_URI`, `MONGO_DB_NAME`, and `ADMIN_PASSWORD`.
 
 import { MongoClient, Db } from 'mongodb';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 let cachedDb: Db | null = null;
 
@@ -24,16 +25,14 @@ async function connectToDatabase() {
   return db;
 }
 
-export default async function handler(req: Request) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ message: 'Method Not Allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json', 'Allow': 'POST' },
-    });
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
   try {
-    const { password } = await req.json();
+    const { password } = req.body;
     const adminPassword = process.env.ADMIN_PASSWORD;
 
     if (!adminPassword) {
@@ -41,10 +40,7 @@ export default async function handler(req: Request) {
     }
 
     if (password !== adminPassword) {
-      return new Response(JSON.stringify({ message: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const db = await connectToDatabase();
@@ -53,17 +49,11 @@ export default async function handler(req: Request) {
     // Fetch all orders, sort by creation date descending
     const orders = await collection.find({}).sort({ createdAt: -1 }).toArray();
 
-    return new Response(JSON.stringify(orders), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return res.status(200).json(orders);
 
   } catch (error) {
     console.error('Failed to get orders:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return new Response(JSON.stringify({ message: 'Internal Server Error', error: errorMessage }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return res.status(500).json({ message: 'Internal Server Error', error: errorMessage });
   }
 }
