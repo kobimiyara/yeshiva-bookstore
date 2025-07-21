@@ -1,6 +1,7 @@
 
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { connectToDatabase } from './lib/mongodb';
+import { connectToDatabase } from './lib/mongodb.js';
 
 
 // Define the expected structure from the frontend

@@ -1,8 +1,9 @@
+
 // This serverless function handles the automated callback (webhook) from Nedarim Plus.
 // It verifies the transaction and updates the order status in the database.
 import { ObjectId } from 'mongodb';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { connectToDatabase } from './lib/mongodb';
+import { connectToDatabase } from './lib/mongodb.js';
 
 interface NedarimWebhookPayload {
     SaleId: string; // This is OUR order ID
