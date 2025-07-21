@@ -74,7 +74,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // 3. Call Nedarim Plus to get a payment link
     step = 'calling-nedarim-api';
-    const apiResponse = await fetch('https://www.matara.pro/nedarimplus/V6/CreateSaleLink', {
+    // FIX: Changed endpoint from CreateSaleLink to CreateSale as per API documentation
+    const apiResponse = await fetch('https://www.matara.pro/nedarimplus/V6/CreateSale', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(nedarimPayload)
