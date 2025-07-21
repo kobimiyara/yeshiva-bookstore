@@ -1,4 +1,5 @@
 
+
 import { useState, useMemo, useEffect } from 'react';
 import { Welcome } from './components/Welcome';
 import { BookSelector } from './components/BookSelector';
@@ -10,7 +11,6 @@ import { CartItem, Order } from './types';
 import { BOOKS } from './constants';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
-import { exportToCsv } from './utils/csvUtils';
 import { SpinnerIcon } from './components/icons';
 
 enum AppState {
@@ -135,10 +135,6 @@ export default function App() {
     }
   };
 
-  const handleExportOrders = () => {
-    exportToCsv("orders.csv", orders);
-  };
-
   const handleGoBackToWelcome = () => setAppState(AppState.Welcome);
   const handleTryAgain = () => {
     setSubmitError(null);
@@ -198,7 +194,6 @@ export default function App() {
         return (
           <AdminView 
             orders={orders}
-            onExport={handleExportOrders}
             onLogout={handleStartNewOrder}
           />
         );
