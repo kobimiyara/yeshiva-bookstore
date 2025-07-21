@@ -1,29 +1,7 @@
 // This file is intended to be deployed as a serverless function.
 // It requires environment variables `MONGO_URI`, `MONGO_DB_NAME`, and `ADMIN_PASSWORD`.
-
-import { MongoClient, Db } from 'mongodb';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-let cachedDb: Db | null = null;
-
-async function connectToDatabase() {
-  if (cachedDb) {
-    return cachedDb;
-  }
-  const uri = process.env.MONGO_URI;
-  const dbName = process.env.MONGO_DB_NAME;
-
-  if (!uri || !dbName) {
-    throw new Error('Please define the MONGO_URI and MONGO_DB_NAME environment variables');
-  }
-
-  const client = new MongoClient(uri);
-  await client.connect();
-  const db = client.db(dbName);
-  
-  cachedDb = db;
-  return db;
-}
+import { connectToDatabase } from './lib/mongodb';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
