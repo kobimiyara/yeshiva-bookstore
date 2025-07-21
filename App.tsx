@@ -6,7 +6,7 @@ import { PaymentFailure } from './components/PaymentFailure';
 import { Confirmation } from './components/Confirmation';
 import { AdminLogin } from './components/AdminLogin';
 import { AdminView } from './components/AdminView';
-import { CartItem, Order, Book } from './types';
+import { CartItem, Order } from './types';
 import { BOOKS } from './constants';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
