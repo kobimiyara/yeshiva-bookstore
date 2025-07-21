@@ -1,5 +1,4 @@
 
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from './lib/mongodb.js';
 
@@ -63,11 +62,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ApiName: NEDARIM_API_NAME,
       ApiPassword: NEDARIM_API_PASSWORD,
       Amount: total,
+      Currency: 1, // Add currency: 1 for ILS (Shekel)
       SaleId: orderId, // Use our MongoDB order ID as their SaleId
       PaymentSuccessRedirectUrl: `${baseUrl}/payment/success`,
       PaymentFailedRedirectUrl: `${baseUrl}/payment/failure`,
       CallBackUrl: `${baseUrl}/api/payment-webhook`,
       FullName: studentName,
+      SaleDesc: `רכישת ספרים עבור ${studentName}`, // Add a description
       PayWhatYouWant: false,
     };
     
@@ -79,15 +80,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         body: JSON.stringify(nedarimPayload)
     });
 
-    if (!apiResponse.ok) {
-        throw new Error(`Nedarim Plus API responded with status ${apiResponse.status}`);
+    // Improved error handling: Read as text first to avoid JSON parse error on HTML responses.
+    const responseText = await apiResponse.text();
+    let responseData;
+    
+    try {
+      responseData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Nedarim Plus API response was not valid JSON. Status:", apiResponse.status);
+      console.error("Response Body:", responseText);
+      // This more specific error will be surfaced to the user instead of "Internal Server Error"
+      throw new Error("The payment provider returned an invalid response.");
     }
 
-    const responseData = await apiResponse.json();
-
+    // Check for API-level errors indicated in the JSON response
     if (responseData.ResultCode !== 0) {
         console.error("Nedarim Plus Error:", responseData.ResultMessage);
         throw new Error(`Failed to create payment link: ${responseData.ResultMessage}`);
+    }
+    
+    if (!responseData.SaleLink) {
+        console.error("Nedarim Plus response missing SaleLink:", responseData);
+        throw new Error("Payment provider response was successful but did not include a payment link.");
     }
 
     // 4. Return the sale link to the frontend
@@ -97,6 +111,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error) {
     console.error(`Error at step [${step}]:`, error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return res.status(500).json({ message: 'Internal Server Error', error: errorMessage });
+    // Return the specific error message to the frontend.
+    return res.status(500).json({ message: errorMessage });
   }
 }
