@@ -102,9 +102,21 @@ ADMIN_PASSWORD="MySuperSecretAdminPassword123"
 # Nedarim Plus Payment Gateway
 # =================================
 # פרטי API שקיבלת מ"נדרים פלוס"
-NEDARIM_API_NAME="YOUR_API_USERNAME"
-NEDARIM_API_PASSWORD="YOUR_API_PASSWORD"
+NEDARIM_API_NAME="YOUR_API_USERNAME_FROM_NEDARIM"
+NEDARIM_API_PASSWORD="YOUR_API_PASSWORD_FROM_NEDARIM"
 ```
+
+### **חשוב מאוד: מציאת פרטי ה-API הנכונים של "נדרים פלוס"**
+
+**זוהי הנקודה הקריטית ביותר בהגדרה.** פרטי ה-API (`NEDARIM_API_NAME` ו-`NEDARIM_API_PASSWORD`) **אינם** שם המשתמש והסיסמה שבהם אתם משתמשים כדי להתחבר לאתר הניהול של "נדרים פלוס". אלו הם פרטי הזדהות נפרדים, המיועדים לתקשורת בין תוכנות.
+
+כדי למצוא אותם:
+1.  **היכנסו לחשבונכם** באתר "נדרים פלוס": [https://www.matara.pro/nedarimplus/](https://www.matara.pro/nedarimplus/).
+2.  חפשו בתפריט הניהול אפשרות בשם **"הגדרות"**, **"ממשק API"**, **"אינטגרציה"** או **"חיבור למערכות חיצוניות"**.
+3.  במסך זה, אתם אמורים למצוא את ה-`ApiName` וה-`ApiPassword` שלכם, או אפשרות ליצור אותם.
+4.  העתיקו את הערכים המדויקים הללו לקובץ ה-`.env` שלכם (ולמשתני הסביבה ב-Vercel).
+
+**שימוש בפרטי התחברות רגילים יגרום לכשל בתהליך התשלום.**
 
 ### שלב 6: הרצת שרת הפיתוח
 
@@ -115,8 +127,6 @@ npm run dev
 ```
 
 Vite יפעיל שרת פיתוח. פתח את הדפדפן וגלוש לכתובת המקומית שמופיעה בטרמינל (בדרך כלל `http://localhost:5173`).
-
-האתר אמור להיות פעיל ולאפשר לך לבצע הזמנות שייסלקו אוטומטית דרך "נדרים פלוס".
 
 ---
 
@@ -132,6 +142,6 @@ Vite יפעיל שרת פיתוח. פתח את הדפדפן וגלוש לכתו�
     - `MONGO_URI`
     - `MONGO_DB_NAME`
     - `ADMIN_PASSWORD`
-    - `NEDARIM_API_NAME`
-    - `NEDARIM_API_PASSWORD`
+    - `NEDARIM_API_NAME` (עם הערך הנכון שמצאתם בחשבון נדרים פלוס)
+    - `NEDARIM_API_PASSWORD` (עם הערך הנכון שמצאתם בחשבון נדרים פלוס)
 6.  לחץ על `Deploy`. בסיום התהליך, תקבל קישור לאתר הפעיל שלך.

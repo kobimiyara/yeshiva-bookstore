@@ -24,3 +24,11 @@ export interface Order {
   providerTransactionId?: string; // Nedarim Plus's own ID for the sale
   providerConfirmationCode?: string; // The approval code from the credit card company
 }
+
+export interface BookSummary {
+  id: number;
+  title: string;
+  author: string;
+  quantity: number;
+  totalRevenue: number;
+}

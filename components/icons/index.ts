@@ -11,3 +11,5 @@ export * from './ShoppingCartIcon';
 export * from './SpinnerIcon';
 export * from './TagIcon';
 export * from './UserIcon';
+export * from './UserGroupIcon';
+export * from './ClipboardListIcon';
