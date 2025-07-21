@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { CheckCircleIcon } from './icons/CheckCircleIcon';
+import { CheckCircleIcon } from './icons';
 
 interface ConfirmationProps {
   onNewOrder: () => void;

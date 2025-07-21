@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>הזמנת ספרים - ישיבת שבי חברון</title>
+    <title>לב ארי ספרים - ישיבת שבי חברון</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,10 +12,21 @@
       body {
         font-family: 'Heebo', sans-serif;
       }
+      .noscript-banner {
+        padding: 1rem;
+        background-color: #fef2f2; /* red-50 */
+        color: #b91c1c; /* red-700 */
+        text-align: center;
+        border-bottom: 2px solid #ef4444; /* red-500 */
+      }
     </style>
-  <link rel="stylesheet" href="/index.css">
-</head>
+  </head>
   <body class="bg-gray-100">
+    <noscript>
+      <div class="noscript-banner">
+        <strong>שימו לב:</strong> נראה ש-JavaScript אינו מופעל בדפדפן שלכם. אפליקציה זו דורשת JavaScript כדי לפעול כראוי.
+      </div>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

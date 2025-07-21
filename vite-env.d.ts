@@ -1,10 +1,2 @@
-interface ImportMetaEnv {
-  readonly VITE_BANK_ACCOUNT_NAME: string;
-  readonly VITE_BANK_NAME: string;
-  readonly VITE_BANK_BRANCH: string;
-  readonly VITE_BANK_ACCOUNT_NUMBER: string;
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
+// This file can be left empty or used for other Vite-specific type declarations.
+// The VITE_BANK_* variables were removed as they are no longer needed.

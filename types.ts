@@ -4,6 +4,7 @@ export interface Book {
   title: string;
   author: string;
   price: number;
+  groupId?: string;
 }
 
 export interface CartItem extends Book {
@@ -11,15 +12,15 @@ export interface CartItem extends Book {
 }
 
 export interface Order {
-  _id: string;
+  _id: string; // From MongoDB
   studentName: string;
   cart: CartItem[];
   total: number;
-  paymentReference: string;
-  receipt: {
-    name: string;
-    type: string;
-    data: string; // base64
-  };
+  status: 'pending' | 'completed' | 'failed';
   createdAt: string; // ISO Date string
+  
+  // Nedarim Plus specific fields
+  paymentProvider?: 'NedarimPlus';
+  providerTransactionId?: string; // Nedarim Plus's own ID for the sale
+  providerConfirmationCode?: string; // The approval code from the credit card company
 }

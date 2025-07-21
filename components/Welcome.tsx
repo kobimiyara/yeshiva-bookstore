@@ -1,7 +1,6 @@
 
-import React, { useState } from 'react';
-import { UserIcon } from './icons/UserIcon';
-import { ArrowLeftIcon } from './icons/ArrowLeftIcon';
+import React, { useState, useRef, useEffect } from 'react';
+import { UserIcon, ArrowLeftIcon } from './icons';
 
 interface WelcomeProps {
   onNameSubmit: (name: string) => void;
@@ -9,6 +8,12 @@ interface WelcomeProps {
 
 export const Welcome: React.FC<WelcomeProps> = ({ onNameSubmit }) => {
   const [name, setName] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Automatically focus the input field when the component mounts
+    inputRef.current?.focus();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,12 +32,14 @@ export const Welcome: React.FC<WelcomeProps> = ({ onNameSubmit }) => {
             <UserIcon className="h-5 w-5 text-gray-400" />
           </div>
           <input
+            ref={inputRef}
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="לדוגמא: ישראל ישראלי"
             className="w-full pl-4 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
             required
+            aria-label="שם התלמיד המלא"
           />
         </div>
         <button

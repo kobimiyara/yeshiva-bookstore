@@ -1,7 +1,6 @@
+
 import React, { useState } from 'react';
-import { KeyIcon } from './icons/KeyIcon';
-import { SpinnerIcon } from './icons/SpinnerIcon';
-import { ArrowRightIcon } from './icons/ArrowRightIcon';
+import { KeyIcon, SpinnerIcon, ArrowRightIcon } from './icons';
 
 interface AdminLoginProps {
   onLogin: (password: string) => void;
@@ -12,6 +11,7 @@ interface AdminLoginProps {
 
 export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, isSubmitting, error, onBack }) => {
   const [password, setPassword] = useState('');
+  const errorId = 'password-error';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,16 +37,18 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, isSubmitting, e
           </div>
           <input
             type="password"
+            id="admin-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="סיסמה"
             className="w-full pl-4 pr-10 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
             required
+            aria-describedby={error ? errorId : undefined}
           />
         </div>
         
         {error && (
-            <div className="mt-4 bg-red-100 border-r-4 border-red-500 text-red-800 p-3 rounded-lg text-sm text-right" role="alert">
+            <div id={errorId} className="mt-4 bg-red-100 border-r-4 border-red-500 text-red-800 p-3 rounded-lg text-sm text-right" role="alert" aria-live="polite">
                 <p>{error}</p>
             </div>
         )}

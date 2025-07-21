@@ -7,6 +7,9 @@ import { Order } from '../types';
  * @returns The escaped string.
  */
 const escapeCsvValue = (value: any): string => {
+    if (value === null || value === undefined) {
+        return '';
+    }
     const stringValue = String(value);
     if (/[",\n]/.test(stringValue)) {
         return `"${stringValue.replace(/"/g, '""')}"`;
@@ -26,23 +29,25 @@ export const exportToCsv = (filename: string, orders: Order[]): void => {
     }
 
     const headers = [
-        "ID",
+        "Order ID",
         "Date",
         "Student Name",
         "Total Amount",
-        "Payment Reference",
-        "Receipt Filename",
+        "Status",
+        "Confirmation Code",
+        "NedarimPlus Transaction ID",
         "Books (Count)",
         "Book List"
     ];
 
     const rows = orders.map(order => [
-        order._id.toString(),
+        order._id,
         new Date(order.createdAt).toLocaleString('he-IL'),
         order.studentName,
         order.total,
-        order.paymentReference,
-        order.receipt.name,
+        order.status,
+        order.providerConfirmationCode,
+        order.providerTransactionId,
         order.cart.length,
         order.cart.map(item => item.title).join('; ') // Use semicolon to avoid comma issues
     ]);

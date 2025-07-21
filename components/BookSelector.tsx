@@ -2,10 +2,7 @@
 import React from 'react';
 import { Book, CartItem } from '../types';
 import { BOOKS } from '../constants';
-import { ShoppingCartIcon } from './icons/ShoppingCartIcon';
-import { TagIcon } from './icons/TagIcon';
-import { CheckCircleIcon } from './icons/CheckCircleIcon';
-import { ArrowRightIcon } from './icons/ArrowRightIcon';
+import { ShoppingCartIcon, TagIcon, CheckCircleIcon, ArrowRightIcon } from './icons';
 
 interface BookSelectorProps {
   studentName: string;
@@ -14,12 +11,13 @@ interface BookSelectorProps {
   onAddToCart: (bookId: number) => void;
   onProceed: () => void;
   onBack: () => void;
+  error: string | null;
 }
 
 const BookCard: React.FC<{ book: Book; isSelected: boolean; onSelect: (id: number) => void }> = ({ book, isSelected, onSelect }) => (
     <div
         onClick={() => onSelect(book.id)}
-        className={`relative p-4 border rounded-xl cursor-pointer transition-all duration-200 ${
+        className={`relative p-4 border rounded-xl cursor-pointer transition-all duration-200 h-full flex flex-col justify-between ${
             isSelected ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500' : 'border-gray-200 bg-white hover:border-gray-400'
         }`}
     >
@@ -28,15 +26,18 @@ const BookCard: React.FC<{ book: Book; isSelected: boolean; onSelect: (id: numbe
                 <CheckCircleIcon className="h-5 w-5" />
             </div>
         )}
-        <h3 className="text-lg font-bold text-gray-800">{book.title}</h3>
-        <p className="text-sm text-gray-500 mb-2">{book.author}</p>
-        <p className="text-xl font-bold text-blue-600">{book.price} ₪</p>
+        <div>
+            <h3 className="text-lg font-bold text-gray-800">{book.title}</h3>
+            <p className="text-sm text-gray-500 mb-2">{book.author}</p>
+        </div>
+        <p className="text-xl font-bold text-blue-600 mt-2">{book.price} ₪</p>
     </div>
 );
 
 
-export const BookSelector: React.FC<BookSelectorProps> = ({ studentName, cart, total, onAddToCart, onProceed, onBack }) => {
+export const BookSelector: React.FC<BookSelectorProps> = ({ studentName, cart, total, onAddToCart, onProceed, onBack, error }) => {
   const isBookInCart = (bookId: number) => cart.some(item => item.id === bookId);
+  const renderedGroupIds = new Set<string>();
 
   return (
     <div className="p-4 sm:p-8">
@@ -47,15 +48,42 @@ export const BookSelector: React.FC<BookSelectorProps> = ({ studentName, cart, t
            <span>חזור</span>
         </button>
       </div>
-      <p className="text-gray-600 mb-6">בחר את ספרי היסוד המומלצים עבורך. ניתן לבחור את כל הספרים או חלק מהם.</p>
+      <p className="text-gray-600 mb-2">בחר את ספרי היסוד המומלצים עבורך. ניתן לבחור את כל הספרים או חלק מהם.</p>
+
+      <div className="mb-6 p-3 bg-blue-50 border-r-4 border-blue-500 rounded-md text-sm">
+        <p className="text-blue-800">
+            <strong>שימו לב:</strong> משנ"ב, תנ"ך וספרים נוספים שתרצו לקנות ימכרו בא' אלול בישיבה.
+        </p>
+      </div>
 
       <div className="grid md:grid-cols-12 gap-8">
         {/* Book List */}
         <div className="md:col-span-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {BOOKS.map(book => (
-                    <BookCard key={book.id} book={book} isSelected={isBookInCart(book.id)} onSelect={onAddToCart} />
-                ))}
+              {BOOKS.map(book => {
+                if (book.groupId) {
+                  if (renderedGroupIds.has(book.groupId)) {
+                    return null; // Already rendered this group
+                  }
+                  renderedGroupIds.add(book.groupId);
+
+                  const groupBooks = BOOKS.filter(b => b.groupId === book.groupId);
+
+                  return (
+                    <div key={`group-${book.groupId}`} className="sm:col-span-2 lg:col-span-3 p-4 border border-gray-300 rounded-xl bg-gray-50/50">
+                      <h4 className="font-bold text-gray-700 mb-3">ספר הכוזרי (יש לבחור מהדורה אחת)</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {groupBooks.map(groupBook => (
+                          <BookCard key={groupBook.id} book={groupBook} isSelected={isBookInCart(groupBook.id)} onSelect={onAddToCart} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+                
+                // Render non-grouped books
+                return <BookCard key={book.id} book={book} isSelected={isBookInCart(book.id)} onSelect={onAddToCart} />;
+              })}
             </div>
         </div>
 
@@ -87,6 +115,13 @@ export const BookSelector: React.FC<BookSelectorProps> = ({ studentName, cart, t
               <span>{total} ₪</span>
             </div>
             
+            {error && (
+                <div className="mt-4 bg-red-100 border-r-4 border-red-500 text-red-700 p-3 rounded-lg text-sm" role="alert" aria-live="polite">
+                  <p className="font-bold">שגיאה</p>
+                  <p>{error}</p>
+                </div>
+            )}
+
             <button
               onClick={onProceed}
               disabled={cart.length === 0}
