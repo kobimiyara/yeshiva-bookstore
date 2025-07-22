@@ -15,31 +15,6 @@ interface NedarimWebhookPayload {
     // ... other fields from Nedarim Plus we might not need to store
 }
 
-// Function to verify the transaction by calling back to Nedarim Plus API
-async function verifyTransaction(saleId: string): Promise<any> {
-    const { NEDARIM_API_NAME, NEDARIM_API_PASSWORD } = process.env;
-    if (!NEDARIM_API_NAME || !NEDARIM_API_PASSWORD) {
-        throw new Error("Nedarim Plus API credentials are not set on the server.");
-    }
-
-    const response = await fetch('https://www.matara.pro/nedarimplus/V6/GetSaleById', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            ApiName: NEDARIM_API_NAME,
-            ApiPassword: NEDARIM_API_PASSWORD,
-            SaleId: saleId,
-        }),
-    });
-
-    if (!response.ok) {
-        throw new Error(`Verification failed: API responded with status ${response.status}`);
-    }
-
-    return response.json();
-}
-
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
@@ -56,28 +31,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).send('Bad Request: Invalid or missing SaleId');
     }
     
-    // SECURITY: Verify the transaction details with Nedarim Plus directly
-    const verifiedData = await verifyTransaction(orderId);
-
-    if (verifiedData.SaleId !== orderId) {
-        console.error(`Webhook validation failed: ID mismatch. Webhook: ${orderId}, API: ${verifiedData.SaleId}`);
-        return res.status(401).send('Unauthorized: ID mismatch');
-    }
-
     const db = await connectToDatabase();
     const ordersCollection = db.collection('orders');
 
-    const filter = { _id: new ObjectId(orderId), status: 'pending' };
-    
+    const filter = { _id: new ObjectId(orderId), status: 'pending' as const };
+    const order = await ordersCollection.findOne(filter);
+
+    if (!order) {
+        console.warn(`Webhook for order ${orderId} received, but no matching pending order was found. It might already be processed or never existed.`);
+        // Return 200 to prevent Nedarim from retrying.
+        return res.status(200).send('OK (Order not found or already processed)');
+    }
+
+    // SECURITY CHECK: Verify that the amount from the webhook matches the order total.
+    if (order.total !== payload.Amount) {
+        console.error(`SECURITY ALERT: Amount mismatch for order ${orderId}. DB total: ${order.total}, Webhook amount: ${payload.Amount}`);
+        // Update status to 'failed' to indicate a problem.
+        await ordersCollection.updateOne(filter, { $set: { status: 'failed', providerTransactionId: payload.NdsSaleId } });
+        return res.status(400).send('Bad Request: Amount mismatch');
+    }
+
     let updateDoc;
-    // Check the verified result code from the direct API call
-    if (verifiedData.ResultCode === 0) {
+    if (payload.ResultCode === 0) {
         // Payment successful
         updateDoc = {
             $set: {
                 status: 'completed' as const,
-                providerTransactionId: verifiedData.NdsSaleId,
-                providerConfirmationCode: verifiedData.ConfirmationCode,
+                providerTransactionId: payload.NdsSaleId,
+                providerConfirmationCode: payload.ConfirmationCode,
             },
         };
     } else {
@@ -85,16 +66,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         updateDoc = {
             $set: {
                 status: 'failed' as const,
-                providerTransactionId: verifiedData.NdsSaleId,
+                providerTransactionId: payload.NdsSaleId,
             },
         };
     }
     
-    const result = await ordersCollection.updateOne(filter, updateDoc);
-
-    if (result.matchedCount === 0) {
-        console.warn(`Webhook for order ${orderId} received, but no matching pending order was found. It might already be processed.`);
-    }
+    await ordersCollection.updateOne(filter, updateDoc);
 
     // Respond to Nedarim Plus that we have received the webhook.
     return res.status(200).send('OK');

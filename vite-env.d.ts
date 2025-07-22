@@ -1,2 +1,8 @@
-// This file can be left empty or used for other Vite-specific type declarations.
-// The VITE_BANK_* variables were removed as they are no longer needed.
+interface ImportMetaEnv {
+  readonly VITE_NEDARIM_MOSAD_ID: string;
+  readonly VITE_NEDARIM_API_VALID: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}

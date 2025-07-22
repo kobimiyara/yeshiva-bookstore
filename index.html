@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
   <head>
@@ -11,6 +12,12 @@
     <style>
       body {
         font-family: 'Heebo', sans-serif;
+        background-color: #f9fafb; /* Fallback: bg-gray-50 */
+        /* Subtle grid pattern for a professional feel */
+        background-image: 
+          linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+        background-size: 2em 2em;
       }
       .noscript-banner {
         padding: 1rem;
@@ -19,9 +26,21 @@
         text-align: center;
         border-bottom: 2px solid #ef4444; /* red-500 */
       }
+      /* Class for visually hiding elements while keeping them accessible to screen readers */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+      }
     </style>
   </head>
-  <body class="bg-gray-100">
+  <body>
     <noscript>
       <div class="noscript-banner">
         <strong>שימו לב:</strong> נראה ש-JavaScript אינו מופעל בדפדפן שלכם. אפליקציה זו דורשת JavaScript כדי לפעול כראוי.

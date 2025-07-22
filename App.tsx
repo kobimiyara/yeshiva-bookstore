@@ -1,5 +1,4 @@
 
-
 import { useState, useMemo, useEffect } from 'react';
 import { Welcome } from './components/Welcome';
 import { BookSelector } from './components/BookSelector';
@@ -11,12 +10,12 @@ import { CartItem, Order } from './types';
 import { BOOKS } from './constants';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
-import { SpinnerIcon } from './components/icons';
+import { PaymentProcessing } from './components/PaymentProcessing';
 
 enum AppState {
   Welcome,
   BookSelection,
-  PaymentInProgress,
+  ProcessingPayment,
   PaymentFailure,
   Confirmation,
   AdminLogin,
@@ -27,19 +26,18 @@ export default function App() {
   const [appState, setAppState] = useState<AppState>(AppState.Welcome);
   const [studentName, setStudentName] = useState<string>('');
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Used for AdminLogin
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [iframeUrl, setIframeUrl] = useState<string>('');
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
 
   useEffect(() => {
-    const path = window.location.pathname;
-    
-    // Handle redirects from payment gateway
-    if (path.startsWith('/payment/success')) {
-      setAppState(AppState.Confirmation);
-      window.history.replaceState({}, document.title, '/');
-    } else if (path.startsWith('/payment/failure')) {
-      setAppState(AppState.PaymentFailure);
+    // This effect now only handles initial deep-linking or manual URL changes,
+    // making the primary flow more robust via polling.
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('view') === 'admin') {
+      setAppState(AppState.AdminLogin);
       window.history.replaceState({}, document.title, '/');
     }
   }, []);
@@ -58,11 +56,8 @@ export default function App() {
       const existingItemIndex = newCart.findIndex(item => item.id === bookId);
 
       if (existingItemIndex > -1) {
-        // Item already in cart, so remove it (toggle off)
         newCart.splice(existingItemIndex, 1);
       } else {
-        // Item not in cart, add it
-        // Before adding, check if it belongs to a group and remove other group members
         if (bookToAdd.groupId) {
           newCart = newCart.filter(item => item.groupId !== bookToAdd.groupId);
         }
@@ -77,7 +72,7 @@ export default function App() {
   }, [cart]);
 
   const handleProceedToPayment = async () => {
-    setAppState(AppState.PaymentInProgress);
+    setIsSubmitting(true);
     setSubmitError(null);
 
     try {
@@ -88,23 +83,58 @@ export default function App() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'התרחשה שגיאה ביצירת קישור התשלום.');
+        const errorData = await response.json().catch(() => ({ message: `שגיאת שרת (${response.status})` }));
+        throw new Error(errorData.message || 'התרחשה שגיאה בהכנת התשלום.');
       }
       
-      const { saleLink } = await response.json();
-      if (saleLink) {
-        window.location.href = saleLink; // Redirect user to payment page
-      } else {
-        throw new Error('לא התקבל קישור תשלום מהשרת.');
+      const { orderId } = await response.json();
+      if (!orderId) {
+        throw new Error('לא התקבל מזהה הזמנה מהשרת.');
       }
+      setCurrentOrderId(orderId);
+
+      const { VITE_NEDARIM_MOSAD_ID, VITE_NEDARIM_API_VALID } = import.meta.env;
+      if (!VITE_NEDARIM_MOSAD_ID || !VITE_NEDARIM_API_VALID) {
+          throw new Error("פרטי הסליקה אינם מוגדרים באפליקציה.");
+      }
+      
+      const baseUrl = window.location.origin;
+      const params = new URLSearchParams({
+        MosadId: VITE_NEDARIM_MOSAD_ID,
+        ApiValid: VITE_NEDARIM_API_VALID,
+        Amount: total.toString(),
+        SaleId: orderId,
+        CallBackUrl: `${baseUrl}/api/payment-webhook`,
+        // Redirects are now a fallback; the primary UX is polling.
+        PaymentSuccessRedirectUrl: `${baseUrl}/?payment=success`,
+        PaymentFailedRedirectUrl: `${baseUrl}/?payment=failure`,
+        FullName: studentName,
+        SaleDesc: `רכישת ספרים עבור ${studentName}`,
+        PayWhatYouWant: 'false',
+      });
+
+      const url = `https://www.matara.pro/nedarimplus/V6/DebitIframe.aspx?${params.toString()}`;
+      setIframeUrl(url);
+      setAppState(AppState.ProcessingPayment);
 
     } catch (error) {
        console.error("Payment initiation error:", error);
        const errorMessage = error instanceof Error ? error.message : 'שגיאת רשת או שהשרת אינו זמין.';
        setSubmitError(`יצירת התשלום נכשלה. נא לנסות שוב. (פרטי שגיאה: ${errorMessage})`);
-       setAppState(AppState.BookSelection);
+    } finally {
+        setIsSubmitting(false);
     }
+  };
+
+  const handlePaymentResult = (status: Order['status']) => {
+    if (status === 'completed') {
+      setAppState(AppState.Confirmation);
+    } else {
+      setAppState(AppState.PaymentFailure);
+    }
+    // Clean up state for the next order
+    setIframeUrl('');
+    setCurrentOrderId(null);
   };
 
   const handleAdminLogin = async (password: string) => {
@@ -117,12 +147,8 @@ export default function App() {
         body: JSON.stringify({ password }),
       });
 
-      if (response.status === 401) {
-        throw new Error('סיסמה שגויה.');
-      }
-      if (!response.ok) {
-        throw new Error('שגיאה בגישה לנתונים.');
-      }
+      if (response.status === 401) throw new Error('סיסמה שגויה.');
+      if (!response.ok) throw new Error('שגיאה בגישה לנתונים.');
 
       const fetchedOrders: Order[] = await response.json();
       setOrders(fetchedOrders);
@@ -135,29 +161,38 @@ export default function App() {
     }
   };
 
-  const handleGoBackToWelcome = () => setAppState(AppState.Welcome);
-  const handleTryAgain = () => {
-    setSubmitError(null);
-    setAppState(AppState.BookSelection);
-  }
-  const handleStartNewOrder = () => {
-    setAppState(AppState.Welcome);
+  const resetOrderState = () => {
     setStudentName('');
     setCart([]);
     setSubmitError(null);
+    setCurrentOrderId(null);
+    setIframeUrl('');
   };
+
+  const handleStartNewOrder = () => {
+    resetOrderState();
+    setAppState(AppState.Welcome);
+  };
+  
+  const handleTryAgain = () => {
+    // Keep student name and cart, just go back to selection screen
+    setSubmitError(null);
+    setCurrentOrderId(null);
+    setIframeUrl('');
+    setAppState(AppState.BookSelection);
+  }
+
   const handleNavigateToAdminLogin = () => {
+    resetOrderState();
     setSubmitError(null);
     setAppState(AppState.AdminLogin);
   };
-  
-  const renderPaymentInProgress = () => (
-    <div className="p-8 sm:p-12 text-center bg-white flex flex-col items-center justify-center min-h-[400px]">
-        <SpinnerIcon className="h-16 w-16 text-blue-600 animate-spin mb-4" />
-        <h2 className="text-2xl font-bold text-gray-800">מעביר אותך לתשלום מאובטח...</h2>
-        <p className="text-gray-600 mt-2">אנא המתן, התהליך עשוי לקחת מספר שניות.</p>
-    </div>
-  );
+
+  const handleBackToSelection = () => {
+    setIframeUrl('');
+    setCurrentOrderId(null);
+    setAppState(AppState.BookSelection);
+  };
 
   const renderContent = () => {
     switch(appState) {
@@ -171,12 +206,24 @@ export default function App() {
               total={total}
               onAddToCart={handleAddToCart}
               onProceed={handleProceedToPayment}
-              onBack={handleGoBackToWelcome}
+              onBack={handleStartNewOrder}
+              isProcessing={isSubmitting}
               error={submitError}
             />
         );
-      case AppState.PaymentInProgress:
-        return renderPaymentInProgress();
+      case AppState.ProcessingPayment:
+        if (!currentOrderId || !iframeUrl) {
+           // Should not happen in normal flow, but as a safeguard:
+           return <PaymentFailure onTryAgain={handleTryAgain} />;
+        }
+        return (
+          <PaymentProcessing
+            orderId={currentOrderId}
+            iframeUrl={iframeUrl}
+            onResult={handlePaymentResult}
+            onBack={handleBackToSelection}
+          />
+        );
       case AppState.PaymentFailure:
         return <PaymentFailure onTryAgain={handleTryAgain} />;
       case AppState.Confirmation:
@@ -203,7 +250,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-4xl mx-auto">
         <Header />
         <main className="mt-8 bg-white shadow-2xl rounded-2xl overflow-hidden">
