@@ -1,6 +1,5 @@
-
 import React, { useState, useMemo } from 'react';
-import { Order, BookSummary, CartItem } from '../types';
+import { Order, BookSummary } from '../types';
 import { LogoutIcon, DownloadIcon, UserGroupIcon, ClipboardListIcon, SearchIcon } from './icons';
 import { exportToCsv, exportBookSummaryToCsv } from '../utils/csvUtils';
 
@@ -219,4 +218,3 @@ export const AdminView: React.FC<AdminViewProps> = ({ orders, onLogout }) => {
             </div>
         </div>
     );
-};
