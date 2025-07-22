@@ -218,3 +218,4 @@ export const AdminView: React.FC<AdminViewProps> = ({ orders, onLogout }) => {
             </div>
         </div>
     );
+};
