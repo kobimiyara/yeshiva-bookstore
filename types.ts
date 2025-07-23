@@ -1,4 +1,6 @@
 
+import { ObjectId } from 'mongodb';
+
 export interface Book {
   id: number;
   title: string;
@@ -12,12 +14,12 @@ export interface CartItem extends Book {
 }
 
 export interface Order {
-  _id: string; // From MongoDB
+  _id: string | ObjectId; // Allow both for backend (ObjectId) and frontend (string)
   studentName: string;
   cart: CartItem[];
   total: number;
   status: 'pending' | 'completed' | 'failed';
-  createdAt: string; // ISO Date string
+  createdAt: string | Date; // Allow both for backend (Date) and frontend (string)
   
   // Nedarim Plus specific fields
   paymentProvider?: 'NedarimPlus';
