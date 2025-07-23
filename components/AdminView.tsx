@@ -1,11 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { Order, BookSummary } from '../types';
-import { LogoutIcon, DownloadIcon, UserGroupIcon, ClipboardListIcon, SearchIcon } from './icons';
+import { LogoutIcon, DownloadIcon, UserGroupIcon, ClipboardListIcon, SearchIcon, PencilIcon, SpinnerIcon } from './icons';
 import { exportToCsv, exportBookSummaryToCsv } from '../utils/csvUtils';
+import { OrderDetailsModal } from './OrderDetailsModal';
 
 interface AdminViewProps {
     orders: Order[];
     onLogout: () => void;
+    adminPassword: string;
+    setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
 }
 
 type AdminActiveView = 'byStudent' | 'byBook';
@@ -51,10 +54,14 @@ const StatCard: React.FC<{ title: string; value: string | number; colorClass: st
     </div>
 );
 
-export const AdminView: React.FC<AdminViewProps> = ({ orders, onLogout }) => {
+export const AdminView: React.FC<AdminViewProps> = ({ orders, onLogout, adminPassword, setOrders }) => {
     const [activeView, setActiveView] = useState<AdminActiveView>('byStudent');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+    const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+    const [isWarmingUp, setIsWarmingUp] = useState(false);
+    const [warmUpMessage, setWarmUpMessage] = useState('');
+    const [apiError, setApiError] = useState<string | null>(null);
     
     const completedOrders = useMemo(() => orders.filter(o => o.status === 'completed'), [orders]);
 
@@ -95,6 +102,66 @@ export const AdminView: React.FC<AdminViewProps> = ({ orders, onLogout }) => {
             .filter(order => order.studentName.toLowerCase().includes(searchTerm.toLowerCase()));
     }, [orders, statusFilter, searchTerm]);
 
+    const handleWarmUp = async () => {
+        setIsWarmingUp(true);
+        setWarmUpMessage('');
+        setApiError(null);
+        try {
+            const response = await fetch('/api/warm-up', { method: 'POST' });
+            if (!response.ok) throw new Error('התגובה מהשרת לא הייתה תקינה.');
+            const data = await response.json();
+            setWarmUpMessage(data.message || 'המערכת מוכנה.');
+            setTimeout(() => setWarmUpMessage(''), 5000); // Hide message after 5 seconds
+        } catch (error) {
+            setApiError('חימום המערכת נכשל.');
+        } finally {
+            setIsWarmingUp(false);
+        }
+    };
+    
+    const handleDeleteOrder = async (orderId: string) => {
+        setApiError(null);
+        try {
+            const response = await fetch('/api/delete-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId, password: adminPassword }),
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'מחיקת ההזמנה נכשלה.');
+            }
+            setOrders(prevOrders => prevOrders.filter(o => o._id !== orderId));
+            setEditingOrder(null);
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'שגיאה לא ידועה';
+            setApiError(msg);
+            throw error; // Re-throw to keep modal open
+        }
+    };
+
+    const handleDeleteBook = async (orderId: string, bookId: number) => {
+        setApiError(null);
+        try {
+            const response = await fetch('/api/delete-book-from-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId, bookId, password: adminPassword }),
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'מחיקת הספר נכשלה.');
+            }
+            const { updatedOrder } = await response.json();
+            setOrders(prevOrders => prevOrders.map(o => o._id === orderId ? updatedOrder : o));
+            setEditingOrder(updatedOrder);
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'שגיאה לא ידועה';
+            setApiError(msg);
+            throw error; // Re-throw to keep modal open
+        }
+    };
+
     const handleExport = () => {
         if (activeView === 'byBook') {
             exportBookSummaryToCsv('book_summary.csv', bookSummary);
@@ -114,7 +181,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ orders, onLogout }) => {
         <div className="p-4 sm:p-8 bg-gray-50">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
                 <h2 className="text-3xl font-bold text-gray-800">ניהול הזמנות</h2>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <button onClick={handleWarmUp} disabled={isWarmingUp} className="flex items-center gap-2 bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 transition-colors">
+                        {isWarmingUp ? <SpinnerIcon className="h-5 w-5 animate-spin"/> : <span className="text-lg">🚀</span>}
+                        <span>{isWarmingUp ? 'מאחל...' : 'אתחול מערכת סליקה'}</span>
+                    </button>
                     <button onClick={handleExport} disabled={orders.length === 0} className="flex items-center gap-2 bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition-colors">
                         <DownloadIcon className="h-5 w-5" />
                         <span>ייצוא</span>
@@ -125,6 +196,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ orders, onLogout }) => {
                     </button>
                 </div>
             </div>
+
+            {warmUpMessage && <div className="mb-4 p-3 bg-green-100 text-green-800 rounded-lg text-center font-semibold" role="status">{warmUpMessage}</div>}
+            {apiError && !editingOrder && <div className="mb-4 p-3 bg-red-100 text-red-800 rounded-lg text-center font-semibold" role="alert">{apiError}</div>}
+
 
             {/* Dashboard Metrics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -171,7 +246,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ orders, onLogout }) => {
                             <th className="p-3 font-semibold text-gray-600">שם התלמיד</th>
                             <th className="p-3 font-semibold text-gray-600">סה"כ</th>
                             <th className="p-3 font-semibold text-gray-600">סטטוס</th>
-                            <th className="p-3 font-semibold text-gray-600">ספרים</th>
+                            <th className="p-3 font-semibold text-gray-600">פעולות</th>
                         </tr></thead>
                         <tbody className="divide-y divide-gray-200">
                             {filteredOrders.length > 0 ? (
@@ -181,10 +256,14 @@ export const AdminView: React.FC<AdminViewProps> = ({ orders, onLogout }) => {
                                         <td className="p-3 font-bold text-gray-900 truncate" title={order.studentName}>{order.studentName}</td>
                                         <td className="p-3 whitespace-nowrap">{order.total} ₪</td>
                                         <td className="p-3"><StatusBadge status={order.status} /></td>
-                                        <td className="p-3 text-xs text-gray-600">
-                                            <div className="truncate" title={order.cart.map(item => item.title).join(', ')}>
-                                                {order.cart.map(item => item.title).join(', ')}
-                                            </div>
+                                        <td className="p-3">
+                                            <button
+                                                onClick={() => setEditingOrder(order)}
+                                                className="flex items-center gap-1.5 bg-blue-100 text-blue-700 px-3 py-1 rounded-md text-xs font-semibold hover:bg-blue-200 transition-colors"
+                                            >
+                                                <PencilIcon className="h-4 w-4" />
+                                                <span>עריכה / פרטים</span>
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
@@ -216,6 +295,16 @@ export const AdminView: React.FC<AdminViewProps> = ({ orders, onLogout }) => {
                     </table>
                 )}
             </div>
+
+            {editingOrder && (
+                <OrderDetailsModal
+                    order={editingOrder}
+                    onClose={() => { setEditingOrder(null); setApiError(null); }}
+                    onDeleteOrder={handleDeleteOrder}
+                    onDeleteBook={handleDeleteBook}
+                    apiError={apiError}
+                />
+            )}
         </div>
     );
 };

@@ -1,4 +1,3 @@
-
 export * from './ArrowLeftIcon';
 export * from './ArrowRightIcon';
 export * from './BookOpenIcon';
@@ -14,3 +13,5 @@ export * from './UserIcon';
 export * from './UserGroupIcon';
 export * from './ClipboardListIcon';
 export * from './SearchIcon';
+export * from './PencilIcon';
+export * from './TrashIcon';

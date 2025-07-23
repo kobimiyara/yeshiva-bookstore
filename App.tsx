@@ -26,6 +26,7 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [adminPassword, setAdminPassword] = useState<string>('');
 
   useEffect(() => {
     // This effect now handles all initial page load logic: deep-linking and payment redirects.
@@ -166,6 +167,7 @@ export default function App() {
 
       const fetchedOrders: Order[] = await response.json();
       setOrders(fetchedOrders);
+      setAdminPassword(password); // Store password for subsequent actions
       setAppState(AppState.AdminView);
     } catch (error) {
        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
@@ -179,6 +181,7 @@ export default function App() {
     setStudentName('');
     setCart([]);
     setSubmitError(null);
+    setAdminPassword(''); // Clear admin password on reset
   };
 
   const handleStartNewOrder = () => {
@@ -234,6 +237,8 @@ export default function App() {
           <AdminView 
             orders={orders}
             onLogout={handleStartNewOrder}
+            adminPassword={adminPassword}
+            setOrders={setOrders}
           />
         );
       default:
