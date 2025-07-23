@@ -14,19 +14,21 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
     const [isDeleting, setIsDeleting] = useState(false);
     const [deletingBookId, setDeletingBookId] = useState<number | null>(null);
 
-    // Guard Clause: If the order has no _id, it cannot be processed. Return null.
-    // This satisfies TypeScript that `order._id` exists in the rest of the component.
+    // Guard Clause: If the order or its _id is missing, we can't do anything.
     if (!order?._id) {
         return null;
     }
+    
+    // Create a non-nullable constant for the ID. TypeScript now knows this exists for the rest of the render.
+    const orderId = order._id;
 
     const handleDeleteBook = async (bookId: number) => {
         const bookTitle = order.cart.find(b => b.id === bookId)?.title;
         if (window.confirm(`האם אתה בטוח שברצונך למחוק את הספר "${bookTitle}" מהזמנה זו?`)) {
             setDeletingBookId(bookId);
             try {
-                // `order._id` is guaranteed to be defined here due to the guard clause.
-                await onDeleteBook(order._id.toString(), bookId);
+                // Use the guaranteed 'orderId' constant.
+                await onDeleteBook(orderId.toString(), bookId);
             } catch (error) {
                 // Error is handled by parent, this just stops the spinner
             } finally {
@@ -39,8 +41,8 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
         if (window.confirm(`האם אתה בטוח שברצונך למחוק את כל ההזמנה של ${order.studentName}? פעולה זו אינה הפיכה.`)) {
             setIsDeleting(true);
             try {
-                // `order._id` is guaranteed to be defined here due to the guard clause.
-                await onDeleteOrder(order._id.toString());
+                // Use the guaranteed 'orderId' constant.
+                await onDeleteOrder(orderId.toString());
                  // On success, the parent will close the modal
             } catch(error) {
                 // On failure, stop spinner to allow retry
@@ -50,7 +52,6 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
     };
     
     const formatDate = (date: string | Date) => {
-        // This function is robust enough to handle both string and Date objects.
         return new Date(date).toLocaleString('he-IL', {
             year: 'numeric', month: '2-digit', day: '2-digit',
             hour: '2-digit', minute: '2-digit',
@@ -71,8 +72,8 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ order, onC
             >
                 <header className="p-4 sm:px-6 border-b border-gray-200">
                     <h2 id="modal-title" className="text-xl font-bold text-gray-800">פרטי הזמנה - {order.studentName}</h2>
-                    {/* `order._id` is guaranteed to be defined, and we convert it to string for display */}
-                    <p className="text-sm text-gray-500">מזהה: {order._id.toString()} | תאריך: {formatDate(order.createdAt)}</p>
+                    {/* Use the guaranteed 'orderId' constant for display */}
+                    <p className="text-sm text-gray-500">מזהה: {orderId.toString()} | תאריך: {formatDate(order.createdAt)}</p>
                 </header>
                 
                 <main className="p-4 sm:p-6 overflow-y-auto flex-1">
