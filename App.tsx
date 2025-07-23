@@ -1,3 +1,4 @@
+
 import { useState, useMemo, useEffect } from 'react';
 import { Welcome } from './components/Welcome';
 import { BookSelector } from './components/BookSelector';
@@ -128,15 +129,17 @@ export default function App() {
         SaleId: orderId,
         Currency: '1', // Explicitly set currency to ILS (1)
         CallBackUrl: `${baseUrl}/api/payment-webhook`,
-        // Redirects are now the primary mechanism for user feedback
         PaymentSuccessRedirectUrl: `${baseUrl}/?payment=success`,
         PaymentFailedRedirectUrl: `${baseUrl}/?payment=failure`,
-        FullName: studentName,
-        SaleDesc: `רכישת ספרים עבור ${studentName}`,
+        // FullName and SaleDesc temporarily removed to debug potential encoding issues on Nedarim's server
+        // FullName: studentName,
+        // SaleDesc: `רכישת ספרים עבור ${studentName}`,
         PayWhatYouWant: 'false',
       });
 
-      const url = `https://www.matara.pro/nedarimplus/DebitIframe.aspx?${params.toString()}`;
+      // Reverting to the URL from the official documentation.
+      // The repeated 404 errors suggest the problem may be parameter-related, not path-related.
+      const url = `https://www.matara.pro/nedarimplus/V6/DebitIframe.aspx?${params.toString()}`;
       
       // Redirect the user to the payment page
       window.location.href = url;
