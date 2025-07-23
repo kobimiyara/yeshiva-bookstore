@@ -1,6 +1,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from './lib/mongodb.js';
+import type { Order } from '../types.js';
 
 interface RequestPayload {
   studentName: string;
@@ -26,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     step = 'connecting-to-database';
     const db = await connectToDatabase();
-    const ordersCollection = db.collection('orders');
+    const ordersCollection = db.collection<Order>('orders');
 
     step = 'inserting-pending-order-to-db';
     const newOrder = {

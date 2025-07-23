@@ -1,6 +1,8 @@
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from './lib/mongodb.js';
 import { ObjectId } from 'mongodb';
+import type { Order } from '../types.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -22,7 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const db = await connectToDatabase();
-    const collection = db.collection('orders');
+    const collection = db.collection<Order>('orders');
 
     const deleteResult = await collection.deleteOne({ _id: new ObjectId(orderId) });
 

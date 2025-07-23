@@ -4,6 +4,7 @@
 import { ObjectId } from 'mongodb';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from './lib/mongodb.js';
+import type { Order } from '../types.js';
 
 interface NedarimWebhookPayload {
     SaleId: string; // This is OUR order ID
@@ -32,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     const db = await connectToDatabase();
-    const ordersCollection = db.collection('orders');
+    const ordersCollection = db.collection<Order>('orders');
 
     const filter = { _id: new ObjectId(orderId), status: 'pending' as const };
     const order = await ordersCollection.findOne(filter);

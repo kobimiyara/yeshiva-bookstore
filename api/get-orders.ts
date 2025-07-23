@@ -3,6 +3,7 @@
 // It requires environment variables `MONGO_URI`, `MONGO_DB_NAME`, and `ADMIN_PASSWORD`.
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from './lib/mongodb.js';
+import type { Order } from '../types.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -23,7 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const db = await connectToDatabase();
-    const collection = db.collection('orders');
+    const collection = db.collection<Order>('orders');
 
     // Fetch all orders, sort by creation date descending
     const orders = await collection.find({}).sort({ createdAt: -1 }).toArray();
