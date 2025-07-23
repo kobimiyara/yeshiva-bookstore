@@ -131,7 +131,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ orders, onLogout, adminPas
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'מחיקת ההזמנה נכשלה.');
             }
-            setOrders(prevOrders => prevOrders.filter(o => o._id !== orderId));
+            setOrders(prevOrders => prevOrders.filter(o => o._id!.toString() !== orderId));
             setEditingOrder(null);
         } catch (error) {
             const msg = error instanceof Error ? error.message : 'שגיאה לא ידועה';
@@ -153,7 +153,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ orders, onLogout, adminPas
                 throw new Error(errorData.message || 'מחיקת הספר נכשלה.');
             }
             const { updatedOrder } = await response.json();
-            setOrders(prevOrders => prevOrders.map(o => o._id === orderId ? updatedOrder : o));
+            setOrders(prevOrders => prevOrders.map(o => o._id!.toString() === orderId ? updatedOrder : o));
             setEditingOrder(updatedOrder);
         } catch (error) {
             const msg = error instanceof Error ? error.message : 'שגיאה לא ידועה';
@@ -170,8 +170,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ orders, onLogout, adminPas
         }
     };
     
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleString('he-IL', {
+    const formatDate = (date: string | Date) => {
+        return new Date(date).toLocaleString('he-IL', {
             year: 'numeric', month: '2-digit', day: '2-digit',
             hour: '2-digit', minute: '2-digit',
         });
@@ -251,7 +251,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ orders, onLogout, adminPas
                         <tbody className="divide-y divide-gray-200">
                             {filteredOrders.length > 0 ? (
                                 filteredOrders.map(order => (
-                                    <tr key={order._id} className="hover:bg-gray-50">
+                                    <tr key={order._id!.toString()} className="hover:bg-gray-50">
                                         <td className="p-3 whitespace-nowrap">{formatDate(order.createdAt)}</td>
                                         <td className="p-3 font-bold text-gray-900 truncate" title={order.studentName}>{order.studentName}</td>
                                         <td className="p-3 whitespace-nowrap">{order.total} ₪</td>

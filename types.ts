@@ -1,4 +1,3 @@
-
 import { ObjectId } from 'mongodb';
 
 export interface Book {
@@ -14,7 +13,7 @@ export interface CartItem extends Book {
 }
 
 export interface Order {
-  _id: string | ObjectId; // Allow both for backend (ObjectId) and frontend (string)
+  _id?: string | ObjectId; // Allow both for backend (ObjectId) and frontend (string). Made optional.
   studentName: string;
   cart: CartItem[];
   total: number;

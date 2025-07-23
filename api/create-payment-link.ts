@@ -1,11 +1,10 @@
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from './lib/mongodb.js';
-import type { Order } from '../types.js';
+import type { Order, CartItem } from '../types.js';
 
 interface RequestPayload {
   studentName: string;
-  cart: { id: number; title: string; price: number; }[];
+  cart: CartItem[];
   total: number;
 }
 
