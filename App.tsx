@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useEffect } from 'react';
 import { Welcome } from './components/Welcome';
 import { BookSelector } from './components/BookSelector';
@@ -10,12 +9,10 @@ import { CartItem, Order } from './types';
 import { BOOKS } from './constants';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
-import { PaymentProcessing } from './components/PaymentProcessing';
 
 enum AppState {
   Welcome,
   BookSelection,
-  ProcessingPayment,
   PaymentFailure,
   Confirmation,
   AdminLogin,
@@ -29,18 +26,42 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [iframeUrl, setIframeUrl] = useState<string>('');
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
 
   useEffect(() => {
-    // This effect now only handles initial deep-linking or manual URL changes,
-    // making the primary flow more robust via polling.
+    // This effect now handles all initial page load logic: deep-linking and payment redirects.
     const params = new URLSearchParams(window.location.search);
-    if (params.get('view') === 'admin') {
-      setAppState(AppState.AdminLogin);
-      window.history.replaceState({}, document.title, '/');
+    const paymentStatus = params.get('payment');
+    const view = params.get('view');
+
+    if (paymentStatus) {
+        const savedOrderStr = sessionStorage.getItem('currentOrder');
+        
+        if (paymentStatus === 'success') {
+            setAppState(AppState.Confirmation);
+        } else if (paymentStatus === 'failure') {
+            if (savedOrderStr) {
+                try {
+                    const savedOrder = JSON.parse(savedOrderStr);
+                    setStudentName(savedOrder.studentName || '');
+                    setCart(savedOrder.cart || []);
+                } catch (e) {
+                    console.error("Failed to parse saved order from sessionStorage", e);
+                }
+            }
+            setAppState(AppState.PaymentFailure);
+        }
+        
+        sessionStorage.removeItem('currentOrder');
+        // Clean up URL to avoid re-triggering on refresh
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+    } else if (view === 'admin') {
+        setAppState(AppState.AdminLogin);
+        window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, []);
+
+  }, []); // Empty dependency array ensures this runs only once on initial load.
 
   const handleNameSubmit = (name: string) => {
     setStudentName(name.trim());
@@ -93,6 +114,9 @@ export default function App() {
       }
       setCurrentOrderId(orderId);
 
+      // Save state to sessionStorage before redirecting away from the app
+      sessionStorage.setItem('currentOrder', JSON.stringify({ orderId, studentName, cart }));
+
       const { VITE_NEDARIM_MOSAD_ID, VITE_NEDARIM_API_VALID } = import.meta.env;
       if (!VITE_NEDARIM_MOSAD_ID || !VITE_NEDARIM_API_VALID) {
           throw new Error("פרטי הסליקה אינם מוגדרים באפליקציה.");
@@ -105,7 +129,7 @@ export default function App() {
         Amount: total.toString(),
         SaleId: orderId,
         CallBackUrl: `${baseUrl}/api/payment-webhook`,
-        // Redirects are now a fallback; the primary UX is polling.
+        // Redirects are now the primary mechanism for user feedback
         PaymentSuccessRedirectUrl: `${baseUrl}/?payment=success`,
         PaymentFailedRedirectUrl: `${baseUrl}/?payment=failure`,
         FullName: studentName,
@@ -114,27 +138,16 @@ export default function App() {
       });
 
       const url = `https://www.matara.pro/nedarimplus/V6/DebitIframe.aspx?${params.toString()}`;
-      setIframeUrl(url);
-      setAppState(AppState.ProcessingPayment);
+      
+      // Redirect the user to the payment page
+      window.location.href = url;
 
     } catch (error) {
        console.error("Payment initiation error:", error);
        const errorMessage = error instanceof Error ? error.message : 'שגיאת רשת או שהשרת אינו זמין.';
        setSubmitError(`יצירת התשלום נכשלה. נא לנסות שוב. (פרטי שגיאה: ${errorMessage})`);
-    } finally {
-        setIsSubmitting(false);
+       setIsSubmitting(false); // Stop submitting on pre-redirect error
     }
-  };
-
-  const handlePaymentResult = (status: Order['status']) => {
-    if (status === 'completed') {
-      setAppState(AppState.Confirmation);
-    } else {
-      setAppState(AppState.PaymentFailure);
-    }
-    // Clean up state for the next order
-    setIframeUrl('');
-    setCurrentOrderId(null);
   };
 
   const handleAdminLogin = async (password: string) => {
@@ -166,7 +179,6 @@ export default function App() {
     setCart([]);
     setSubmitError(null);
     setCurrentOrderId(null);
-    setIframeUrl('');
   };
 
   const handleStartNewOrder = () => {
@@ -175,10 +187,10 @@ export default function App() {
   };
   
   const handleTryAgain = () => {
-    // Keep student name and cart, just go back to selection screen
+    // User state (name, cart) is already restored from sessionStorage.
+    // Just navigate back to the book selection screen.
     setSubmitError(null);
     setCurrentOrderId(null);
-    setIframeUrl('');
     setAppState(AppState.BookSelection);
   }
 
@@ -186,12 +198,6 @@ export default function App() {
     resetOrderState();
     setSubmitError(null);
     setAppState(AppState.AdminLogin);
-  };
-
-  const handleBackToSelection = () => {
-    setIframeUrl('');
-    setCurrentOrderId(null);
-    setAppState(AppState.BookSelection);
   };
 
   const renderContent = () => {
@@ -210,19 +216,6 @@ export default function App() {
               isProcessing={isSubmitting}
               error={submitError}
             />
-        );
-      case AppState.ProcessingPayment:
-        if (!currentOrderId || !iframeUrl) {
-           // Should not happen in normal flow, but as a safeguard:
-           return <PaymentFailure onTryAgain={handleTryAgain} />;
-        }
-        return (
-          <PaymentProcessing
-            orderId={currentOrderId}
-            iframeUrl={iframeUrl}
-            onResult={handlePaymentResult}
-            onBack={handleBackToSelection}
-          />
         );
       case AppState.PaymentFailure:
         return <PaymentFailure onTryAgain={handleTryAgain} />;
