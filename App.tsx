@@ -136,7 +136,7 @@ export default function App() {
         PayWhatYouWant: 'false',
       });
 
-      const url = `https://www.matara.pro/nedarimplus/V6/DebitIframe.aspx?${params.toString()}`;
+      const url = `https://www.matara.pro/nedarimplus/DebitIframe.aspx?${params.toString()}`;
       
       // Redirect the user to the payment page
       window.location.href = url;
