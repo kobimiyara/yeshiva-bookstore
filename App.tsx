@@ -126,6 +126,7 @@ export default function App() {
         ApiValid: VITE_NEDARIM_API_VALID,
         Amount: total.toString(),
         SaleId: orderId,
+        Currency: '1', // Explicitly set currency to ILS (1)
         CallBackUrl: `${baseUrl}/api/payment-webhook`,
         // Redirects are now the primary mechanism for user feedback
         PaymentSuccessRedirectUrl: `${baseUrl}/?payment=success`,
