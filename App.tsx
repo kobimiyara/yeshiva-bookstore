@@ -26,7 +26,6 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     // This effect now handles all initial page load logic: deep-linking and payment redirects.
@@ -112,7 +111,6 @@ export default function App() {
       if (!orderId) {
         throw new Error('לא התקבל מזהה הזמנה מהשרת.');
       }
-      setCurrentOrderId(orderId);
 
       // Save state to sessionStorage before redirecting away from the app
       sessionStorage.setItem('currentOrder', JSON.stringify({ orderId, studentName, cart }));
@@ -178,7 +176,6 @@ export default function App() {
     setStudentName('');
     setCart([]);
     setSubmitError(null);
-    setCurrentOrderId(null);
   };
 
   const handleStartNewOrder = () => {
@@ -190,7 +187,6 @@ export default function App() {
     // User state (name, cart) is already restored from sessionStorage.
     // Just navigate back to the book selection screen.
     setSubmitError(null);
-    setCurrentOrderId(null);
     setAppState(AppState.BookSelection);
   }
 
